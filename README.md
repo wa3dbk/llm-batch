@@ -13,7 +13,13 @@ A modular, extensible command-line tool for batch LLM inference with customizabl
 ## Installation
 
 ```bash
-# Clone or copy the llm_batch directory
+# Create new environment
+conda create -n llmbatch_env python=3.11 -y
+conda activate llmbatch_env
+
+# Clone the llm_batch repository
+git clone https://github.com/wa3dbk/llm-batch.git
+
 cd llm_batch
 
 # Install in development mode
@@ -23,6 +29,9 @@ pip install -e .
 pip install torch transformers datasets accelerate peft trl bitsandbytes tqdm pyyaml
 
 # Optional: Install Unsloth for 2x faster inference
+pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
+
+# Or the stable version
 pip install unsloth
 ```
 
