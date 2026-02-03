@@ -292,7 +292,7 @@ class BatchInferenceEngine(InferenceEngine):
                 prompt = self.template.render(item.data)
             prompts.append(prompt)
         
-        # Tokenize batch
+        # Tokenize batch with padding
         inputs = self.tokenizer(
             prompts,
             return_tensors="pt",
@@ -300,6 +300,10 @@ class BatchInferenceEngine(InferenceEngine):
             max_length=self.config.max_seq_len - self.config.max_new_tokens,
             padding=True,
         ).to(self.model.device)
+        
+        # Track original input lengths (before padding) for each item
+        # This is needed to correctly extract only the generated tokens
+        input_lengths = (inputs["attention_mask"]).sum(dim=1).tolist()
         
         # Generation config
         gen_kwargs = {
@@ -324,10 +328,16 @@ class BatchInferenceEngine(InferenceEngine):
             outputs = self.model.generate(**inputs, **gen_kwargs)
         
         # Decode and create results
+        # Note: output includes input tokens, so we slice from input_length
         results = []
-        for idx, (item, prompt, output_ids) in enumerate(zip(items, prompts, outputs)):
-            input_length = len(inputs["input_ids"][idx])
-            generated_tokens = output_ids[input_length:]
+        padded_length = inputs["input_ids"].shape[1]
+        
+        for idx, (item, prompt, output_ids, orig_len) in enumerate(
+            zip(items, prompts, outputs, input_lengths)
+        ):
+            # For left-padded inputs, generated tokens start after the padded input
+            # For right-padded inputs (default), generated tokens start at padded_length
+            generated_tokens = output_ids[padded_length:]
             raw_output = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
             output = self.output_processor.process(raw_output)
             

@@ -37,14 +37,16 @@ pip install unsloth
 
 ## Quick Start
 
-### Basic Translation
+### Basic Translation with batching
 
 ```bash
 llm-batch \
     --model unsloth/Qwen2.5-7B-Instruct-bnb-4bit \
     --input sentences.tsv \
     --template "Translate to English: {source}" \
-    --output translations.tsv
+    --output translations.tsv \
+    --batch-size 8 \
+    --num-beams 4    
 ```
 
 ### Using Template Files
@@ -55,6 +57,7 @@ llm-batch \
     --input data.tsv \
     --template templates/nmt_arabic_english.md \
     --system-prompt templates/system_translator.txt \
+    --batch-size 8 \
     --output results.jsonl
 ```
 

@@ -36,7 +36,7 @@ from pathlib import Path
 # Add parent directory for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from llm_batch.engine import InferenceEngine
+from llm_batch.engine import InferenceEngine, BatchInferenceEngine
 from llm_batch.config import InferenceConfig
 from llm_batch import __version__
 
@@ -406,7 +406,13 @@ def main():
     
     # Run inference
     try:
-        engine = InferenceEngine(config)
+        # Use batched engine for batch_size > 1
+        if config.batch_size > 1:
+            if not args.quiet:
+                print(f"Using batched inference (batch_size={config.batch_size})")
+            engine = BatchInferenceEngine(config)
+        else:
+            engine = InferenceEngine(config)
         engine.run()
         return 0
     except KeyboardInterrupt:
