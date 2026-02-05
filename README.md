@@ -20,7 +20,7 @@ conda activate llmbatch_env
 # Clone the llm_batch repository
 git clone https://github.com/wa3dbk/llm-batch.git
 
-cd llm_batch
+cd llm-batch
 
 # Install in development mode
 pip install -e .
