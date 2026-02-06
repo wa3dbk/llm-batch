@@ -1,22 +1,48 @@
 
-<h3 align="center">
-    <img src="img/logo.png" style="max-width: 300px; width: 100%;"/>
-</h3>
+<p align="center">
+  <img src="img/logo.png" width="400" />
+</p>
 
-<h3 align="center">
-    <p>A modular, extensible CLI for batch LLM inference with customizable prompt templates</p>
-</h3>
 
-## Features
+<p align="center">
+  A fast, memory-efficient CLI for <b>batch LLM inference</b><br/>
+  with reusable prompt templates and resumable runs
+</p>
 
-- **Memory-efficient**: Uses Unsloth or 4-bit quantization for low VRAM usage
-- **Batch processing**: Process TSV, CSV, JSONL, or plain text files
-- **Flexible templates**: Use placeholders like `{column_name}` in prompts
-- **Resume capability**: Checkpoints store full config so interrupted jobs can be resumed with a single flag
-- **Config files**: Load settings from YAML or JSON and override with CLI flags
-- **Extensible**: Modular design for easy customization
+<p align="center">
+  <a href="https://github.com/wa3dbk/llm-batch/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/wa3dbk/llm-batch/tests.yml?style=flat-square" />
+  </a>
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
+  <img src="https://img.shields.io/badge/LLM-Unsloth%20%7C%204bit-orange?style=flat-square" />
+</p>
 
-## Installation
+<p align="center">
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick start</a> •
+  <a href="#command-line-options">CLI options</a> •
+  <a href="#python-api">Python API</a>
+</p>
+
+### ⚡ One-liner example
+
+```bash
+llm-batch --model unsloth/Qwen2.5-7B-Instruct-bnb-4bit \
+  --input data.tsv --template "Translate to English: {source}" --output out.tsv --batch-size 8
+```
+
+## ✨ Features
+
+- 🚀 **Memory-efficient** — Unsloth or 4-bit quantization for low VRAM usage
+- 📦 **Batch processing** — Process TSV, CSV, JSONL, or plain text files
+- 📝 **Prompt templates** — Use placeholders like `{column_name}` in prompts
+- 🔁 **Resumable runs** — Checkpoints store full config so interrupted jobs can be resumed with a single flag
+- ⚙️ **Config-driven** — Load settings from YAML or JSON and override with CLI flags
+- 🧩 **Extensible** — Modular design for easy customization
+
+ 
+## 📦 Installation
 
 ```bash
 # Create new environment
@@ -41,7 +67,7 @@ pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
 pip install unsloth
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Basic Translation with batching
 
@@ -100,7 +126,7 @@ llm-batch --config config.yaml
 llm-batch --config config.yaml --batch-size 16 --output other.tsv
 ```
 
-## Input Formats
+## 📁 Input Formats
 
 ### TSV/CSV
 
@@ -130,7 +156,7 @@ One item per line:
 كيفاش حالك
 ```
 
-## Prompt Templates
+## 📐 Prompt Templates
 
 Templates support `{placeholder}` syntax where placeholders are replaced with values from your input data.
 
@@ -168,7 +194,7 @@ Then use it:
 --system-prompt "You are a professional translator."
 ```
 
-## Command-Line Options
+## 🧰 Command-Line Options
 
 ### Model Options
 
