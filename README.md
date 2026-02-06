@@ -1,6 +1,6 @@
 
 <h3 align="center">
-    <img src="img/logo.png"/>
+    <img src="img/logo.png" style="max-width: 300px; width: 100%;"/>
 </h3>
 
 <h3 align="center">
