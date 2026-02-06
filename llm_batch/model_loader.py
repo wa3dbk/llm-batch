@@ -7,10 +7,14 @@ Supports:
 - Various quantization options (4-bit, 8-bit, 16-bit)
 """
 
+import logging
 import os
+
 import torch
 from typing import Tuple, Optional, Any
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Disable Unsloth statistics to avoid vLLM errors
 os.environ.setdefault("UNSLOTH_DISABLE_STATISTICS", "1")
@@ -61,9 +65,9 @@ class ModelLoader:
             self._backend_used = self.backend
         
         if self.verbose:
-            print(f"Loading model: {self.model_name}")
-            print(f"Backend: {self._backend_used}")
-            print(f"Quantization: {self.quantization}")
+            logger.debug("Loading model: %s", self.model_name)
+            logger.debug("Backend: %s", self._backend_used)
+            logger.debug("Quantization: %s", self.quantization)
         
         if self._backend_used == "unsloth":
             return self._load_unsloth()
@@ -166,12 +170,14 @@ class ModelLoader:
         else:
             model_kwargs["torch_dtype"] = self._get_torch_dtype()
         
-        # Try to use Flash Attention 2
+        # Use Flash Attention 2 if available
         try:
+            import flash_attn  # noqa: F401
             model_kwargs["attn_implementation"] = "flash_attention_2"
-        except:
-            pass
-        
+            logger.debug("Flash Attention 2 enabled")
+        except ImportError:
+            logger.debug("Flash Attention 2 not available, using default attention")
+
         model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             **model_kwargs

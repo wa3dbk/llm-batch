@@ -29,16 +29,15 @@ Usage:
 """
 
 import argparse
+import logging
 import sys
-import os
 from pathlib import Path
-
-# Add parent directory for imports
-sys.path.insert(0, str(Path(__file__).parent))
 
 from llm_batch.engine import InferenceEngine, BatchInferenceEngine
 from llm_batch.config import InferenceConfig
 from llm_batch import __version__
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -217,12 +216,6 @@ Examples:
         help="Batch size for inference (default: 1)"
     )
     proc_group.add_argument(
-        "--num-workers",
-        type=int,
-        default=0,
-        help="Data loading workers (default: 0)"
-    )
-    proc_group.add_argument(
         "--limit", "-n",
         type=int,
         help="Limit number of samples to process"
@@ -356,42 +349,70 @@ def list_models():
     """)
 
 
+def _configure_logging(verbose: int, quiet: bool):
+    """Configure logging based on CLI flags."""
+    if quiet:
+        level = logging.WARNING
+    elif verbose >= 2:
+        level = logging.DEBUG
+    elif verbose == 1:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="%(levelname)s: %(message)s",
+    )
+
+
 def main():
     args = parse_args()
-    
+
     # Handle special commands
     if args.list_models:
         list_models()
         return 0
-    
+
+    _configure_logging(args.verbose, args.quiet)
+
     # Validate required arguments
     if not args.model and not args.resume:
-        print("Error: --model is required (or --resume to continue a job)")
-        print("Use --list-models to see recommended models")
+        logger.error("--model is required (or --resume to continue a job)")
+        logger.info("Use --list-models to see recommended models")
         return 1
-    
+
     if not args.input and not args.resume:
-        print("Error: --input is required")
+        logger.error("--input is required")
         return 1
-    
+
     if not args.template and not args.resume:
-        print("Error: --template is required")
+        logger.error("--template is required")
         return 1
-    
+
     if not args.output and not args.resume:
-        print("Error: --output is required")
+        logger.error("--output is required")
         return 1
-    
+
     # Handle --no-sample flag
     if args.no_sample:
         args.do_sample = False
-    
-    # Build config
-    config = InferenceConfig.from_args(args)
-    
-    if args.verbose >= 2:
-        print(f"Config:\n{config}")
-    
+
+    # Build config: start from file if --config given, then override with CLI args
+    if args.config:
+        config = InferenceConfig.from_file(args.config)
+        # Override with any explicitly provided CLI arguments
+        cli_config = InferenceConfig.from_args(args)
+        for field_name in vars(cli_config):
+            cli_val = getattr(cli_config, field_name)
+            default_val = getattr(InferenceConfig(), field_name)
+            if cli_val != default_val:
+                setattr(config, field_name, cli_val)
+    else:
+        config = InferenceConfig.from_args(args)
+
+    logger.debug("Config:\n%s", config)
+
     # Dry run - just show what would happen
     if args.dry_run:
         print("\n=== DRY RUN ===")
@@ -403,26 +424,27 @@ def main():
             print(f"System: {config.system_prompt[:100]}...")
         print(f"Samples: {config.limit or 'all'}")
         return 0
-    
+
     # Run inference
     try:
-        # Use batched engine for batch_size > 1
-        if config.batch_size > 1:
-            if not args.quiet:
-                print(f"Using batched inference (batch_size={config.batch_size})")
+        if args.resume:
+            logger.info("Resuming from checkpoint: %s", args.resume)
+            engine = InferenceEngine.from_checkpoint(args.resume)
+            config = engine.config
+        elif config.batch_size > 1:
+            logger.info("Using batched inference (batch_size=%d)", config.batch_size)
             engine = BatchInferenceEngine(config)
         else:
             engine = InferenceEngine(config)
         engine.run()
         return 0
     except KeyboardInterrupt:
-        print("\n\nInterrupted by user")
+        logger.warning("Interrupted by user")
         return 130
     except Exception as e:
-        print(f"\nError: {e}")
+        logger.error("%s", e)
         if args.verbose:
-            import traceback
-            traceback.print_exc()
+            logger.exception("Full traceback:")
         return 1
 
 

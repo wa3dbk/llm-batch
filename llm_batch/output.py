@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 
+from .utils import detect_format
+
 
 @dataclass
 class InferenceResult:
@@ -103,10 +105,11 @@ class OutputWriter:
         include_input: bool = False,
         include_prompt: bool = False,
         checkpoint_every: int = 100,
+        config_dict: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize output writer.
-        
+
         Args:
             filepath: Output file path
             format: Output format ("auto", "tsv", "csv", "jsonl")
@@ -115,39 +118,37 @@ class OutputWriter:
             include_input: Include input data in output
             include_prompt: Include full prompt in output
             checkpoint_every: Save checkpoint every N items
+            config_dict: Full inference config dict to persist in checkpoints
         """
         self.filepath = Path(filepath)
-        self.format = format if format != "auto" else self._detect_format()
+        self.format = format if format != "auto" else detect_format(str(self.filepath))
         self.columns = columns
         self.delimiter = delimiter
         self.include_input = include_input
         self.include_prompt = include_prompt
         self.checkpoint_every = checkpoint_every
-        
+        self.config_dict = config_dict
+
         self._results: List[InferenceResult] = []
         self._file = None
         self._writer = None
         self._header_written = False
-    
-    def _detect_format(self) -> str:
-        """Detect format from file extension."""
-        ext = self.filepath.suffix.lower()
-        format_map = {
-            ".tsv": "tsv",
-            ".csv": "csv",
-            ".jsonl": "jsonl",
-            ".json": "jsonl",
-        }
-        return format_map.get(ext, "tsv")
-    
-    def open(self):
-        """Open output file for writing."""
+
+    def open(self, append: bool = False):
+        """Open output file for writing.
+
+        Args:
+            append: If True, open in append mode (for resume).
+        """
         self.filepath.parent.mkdir(parents=True, exist_ok=True)
-        self._file = open(self.filepath, "w", encoding="utf-8", newline="")
-        
+        mode = "a" if append else "w"
+        self._file = open(self.filepath, mode, encoding="utf-8", newline="")
+
         if self.format in ["tsv", "csv"]:
             delimiter = self.delimiter if self.format == "tsv" else ","
             self._writer = csv.writer(self._file, delimiter=delimiter)
+        if append:
+            self._header_written = True
     
     def close(self):
         """Close output file."""
@@ -224,13 +225,15 @@ class OutputWriter:
     def _save_checkpoint(self):
         """Save checkpoint for resume capability."""
         checkpoint_path = Path(str(self.filepath) + ".checkpoint")
-        
+
         checkpoint_data = {
             "count": len(self._results),
             "last_index": self._results[-1].index if self._results else -1,
             "filepath": str(self.filepath),
         }
-        
+        if self.config_dict is not None:
+            checkpoint_data["config"] = self.config_dict
+
         checkpoint_path.write_text(
             json.dumps(checkpoint_data, indent=2),
             encoding="utf-8"

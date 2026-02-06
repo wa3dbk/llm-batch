@@ -9,7 +9,7 @@ __version__ = "0.1.0"
 __author__ = "Waad Ben Kheder"
 
 from .config import InferenceConfig
-from .engine import InferenceEngine, BatchInferenceEngine
+from .engine import InferenceEngine, BatchInferenceEngine, run_inference
 from .model_loader import ModelLoader
 from .data_loader import DataLoader
 from .template import PromptTemplate
@@ -23,4 +23,5 @@ __all__ = [
     "DataLoader",
     "PromptTemplate",
     "OutputWriter",
+    "run_inference",
 ]

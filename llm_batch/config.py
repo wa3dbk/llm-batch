@@ -8,6 +8,8 @@ from pathlib import Path
 import json
 import yaml
 
+from .utils import detect_format
+
 
 @dataclass
 class InferenceConfig:
@@ -49,7 +51,6 @@ class InferenceConfig:
     
     # Processing
     batch_size: int = 1
-    num_workers: int = 0
     limit: Optional[int] = None
     skip: int = 0
     checkpoint_every: int = 100
@@ -70,36 +71,15 @@ class InferenceConfig:
         """Validate and process config after initialization."""
         # Auto-detect input format
         if self.input_format == "auto" and self.input_file:
-            self.input_format = self._detect_format(self.input_file)
-        
+            self.input_format = detect_format(self.input_file)
+
         # Auto-detect output format
         if self.output_format == "auto" and self.output_file:
-            self.output_format = self._detect_format(self.output_file)
+            self.output_format = detect_format(self.output_file)
         
         # Parse stop strings
         if isinstance(self.stop_strings, str):
             self.stop_strings = [s.strip() for s in self.stop_strings.split(",")]
-        
-        # Load template from file if path exists
-        if self.template and Path(self.template).exists():
-            self.template = Path(self.template).read_text(encoding="utf-8")
-        
-        # Load system prompt from file if path exists
-        if self.system_prompt and Path(self.system_prompt).exists():
-            self.system_prompt = Path(self.system_prompt).read_text(encoding="utf-8")
-    
-    @staticmethod
-    def _detect_format(filepath: str) -> str:
-        """Detect file format from extension."""
-        ext = Path(filepath).suffix.lower()
-        format_map = {
-            ".tsv": "tsv",
-            ".csv": "csv",
-            ".jsonl": "jsonl",
-            ".json": "jsonl",
-            ".txt": "txt",
-        }
-        return format_map.get(ext, "tsv")
     
     @classmethod
     def from_args(cls, args) -> "InferenceConfig":
@@ -139,7 +119,6 @@ class InferenceConfig:
             
             # Processing
             batch_size=args.batch_size,
-            num_workers=args.num_workers,
             limit=args.limit,
             skip=args.skip,
             checkpoint_every=args.checkpoint_every,

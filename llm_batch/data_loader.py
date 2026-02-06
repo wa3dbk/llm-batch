@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Iterator, Optional, Union
 from dataclasses import dataclass
 
+from .utils import detect_format
+
 
 @dataclass
 class DataItem:
@@ -60,7 +62,7 @@ class DataLoader:
             limit: Maximum number of items to load
         """
         self.filepath = Path(filepath)
-        self.format = format if format != "auto" else self._detect_format()
+        self.format = format if format != "auto" else detect_format(str(self.filepath))
         self.columns = columns
         self.delimiter = delimiter
         self.skip = skip
@@ -68,18 +70,6 @@ class DataLoader:
         
         self._data: List[DataItem] = []
         self._loaded = False
-    
-    def _detect_format(self) -> str:
-        """Detect file format from extension."""
-        ext = self.filepath.suffix.lower()
-        format_map = {
-            ".tsv": "tsv",
-            ".csv": "csv",
-            ".jsonl": "jsonl",
-            ".json": "jsonl",
-            ".txt": "txt",
-        }
-        return format_map.get(ext, "tsv")
     
     def load(self) -> List[DataItem]:
         """Load all data from file."""

@@ -1,14 +1,20 @@
-# LLM Inference CLI
 
-A modular, extensible command-line tool for batch LLM inference with customizable prompt templates.
+<h3 align="center">
+    <img src="img/logo.png"/>
+</h3>
+
+<h3 align="center">
+    <p>A modular, extensible CLI for batch LLM inference with customizable prompt templates</p>
+</h3>
 
 ## Features
 
-- 🚀 **Memory-efficient**: Uses Unsloth or 4-bit quantization for low VRAM usage
-- 📊 **Batch processing**: Process TSV, CSV, JSONL, or plain text files
-- 📝 **Flexible templates**: Use placeholders like `{column_name}` in prompts
-- 💾 **Resume capability**: Checkpoint saves allow resuming interrupted jobs
-- 🔧 **Extensible**: Modular design for easy customization
+- **Memory-efficient**: Uses Unsloth or 4-bit quantization for low VRAM usage
+- **Batch processing**: Process TSV, CSV, JSONL, or plain text files
+- **Flexible templates**: Use placeholders like `{column_name}` in prompts
+- **Resume capability**: Checkpoints store full config so interrupted jobs can be resumed with a single flag
+- **Config files**: Load settings from YAML or JSON and override with CLI flags
+- **Extensible**: Modular design for easy customization
 
 ## Installation
 
@@ -25,8 +31,8 @@ cd llm-batch
 # Install in development mode
 pip install -e .
 
-# Or install dependencies manually
-pip install torch transformers datasets accelerate peft trl bitsandbytes tqdm pyyaml
+# Or install with dev/test dependencies
+pip install -e ".[dev]"
 
 # Optional: Install Unsloth for 2x faster inference
 pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
@@ -46,7 +52,7 @@ llm-batch \
     --template "Translate to English: {source}" \
     --output translations.tsv \
     --batch-size 8 \
-    --num-beams 4    
+    --num-beams 4
 ```
 
 ### Using Template Files
@@ -71,6 +77,27 @@ llm-batch \
     --output summaries.tsv \
     --max-tokens 256 \
     --temperature 0.3
+```
+
+### Using a Config File
+
+Save settings in a YAML or JSON file and optionally override individual options on the command line:
+
+```yaml
+# config.yaml
+model: unsloth/Qwen2.5-7B-Instruct-bnb-4bit
+input_file: data.tsv
+template: "Translate to English: {source}"
+output_file: results.tsv
+batch_size: 8
+num_beams: 4
+```
+
+```bash
+llm-batch --config config.yaml
+
+# Override specific values
+llm-batch --config config.yaml --batch-size 16 --output other.tsv
 ```
 
 ## Input Formats
@@ -207,11 +234,13 @@ Then use it:
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--config` | Load config from YAML/JSON file | None |
 | `--list-models` | List recommended models | - |
 | `--dry-run` | Show what would be processed | False |
-| `--verbose, -v` | Increase verbosity | 0 |
+| `--verbose, -v` | Increase verbosity (-v, -vv) | 0 |
 | `--quiet` | Suppress progress output | False |
 | `--seed` | Random seed | 42 |
+| `--device` | Device (auto, cuda, cpu, cuda:0, ...) | auto |
 
 ## Recommended Models
 
@@ -274,6 +303,8 @@ llm-batch \
 
 ### Resume Interrupted Job
 
+Checkpoints are saved automatically every `--checkpoint-every` items (default 100). Each checkpoint stores the full run configuration, so resuming requires only the checkpoint path:
+
 ```bash
 # If job was interrupted, resume from checkpoint
 llm-batch --resume results.jsonl.checkpoint
@@ -335,7 +366,15 @@ llm_batch/
 ├── data_loader.py   # Data loading (TSV/CSV/JSONL/TXT)
 ├── template.py      # Prompt template handling
 ├── output.py        # Output writing and processing
-└── engine.py        # Main inference engine
+├── engine.py        # Main inference engine
+└── utils.py         # Shared utilities
+```
+
+## Testing
+
+```bash
+pip install -e ".[dev]"
+pytest
 ```
 
 ## Troubleshooting
@@ -351,6 +390,7 @@ llm_batch/
 - Install Unsloth: `pip install unsloth`
 - Use `--num-beams 1` (disable beam search)
 - Increase `--batch-size` (if VRAM allows)
+- Install Flash Attention 2 (`pip install flash-attn`) for automatic speedup when using the transformers backend
 
 ### Repetitive Output
 

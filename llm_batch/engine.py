@@ -4,10 +4,14 @@ Main inference engine for LLM Inference CLI.
 Orchestrates model loading, data processing, inference, and output.
 """
 
+import logging
+import time
+
 import torch
 from typing import Optional, List, Dict, Any, Generator
 from tqdm import tqdm
-import time
+
+logger = logging.getLogger(__name__)
 
 from .config import InferenceConfig
 from .model_loader import ModelLoader
@@ -50,13 +54,14 @@ class InferenceEngine:
         self._model_loader = None
         self._start_time = None
         self._items_processed = 0
+        self._resume_count = 0
     
     def setup(self):
         """Set up all components."""
-        self._print("Setting up inference pipeline...")
-        
+        logger.info("Setting up inference pipeline...")
+
         # Load model
-        self._print(f"Loading model: {self.config.model}")
+        logger.info("Loading model: %s", self.config.model)
         self._model_loader = ModelLoader(
             model_name=self.config.model,
             quantization=self.config.quantization,
@@ -70,11 +75,11 @@ class InferenceEngine:
         
         if self.config.verbose:
             info = self._model_loader.get_model_info()
-            self._print(f"Model loaded: {info.get('total_params_human', 'N/A')} parameters")
-            self._print(f"Backend: {info.get('backend', 'unknown')}")
-        
+            logger.debug("Model loaded: %s parameters", info.get('total_params_human', 'N/A'))
+            logger.debug("Backend: %s", info.get('backend', 'unknown'))
+
         # Load data
-        self._print(f"Loading data: {self.config.input_file}")
+        logger.info("Loading data: %s", self.config.input_file)
         self.data_loader = DataLoader(
             filepath=self.config.input_file,
             format=self.config.input_format,
@@ -84,10 +89,10 @@ class InferenceEngine:
             limit=self.config.limit,
         )
         self.data_loader.load()
-        self._print(f"Loaded {len(self.data_loader)} items")
-        
+        logger.info("Loaded %d items", len(self.data_loader))
+
         if self.config.verbose >= 2:
-            self._print(self.data_loader.preview())
+            logger.debug(self.data_loader.preview())
         
         # Set up template
         self.template = PromptTemplate(
@@ -96,7 +101,7 @@ class InferenceEngine:
         )
         
         if self.config.verbose:
-            self._print(f"Template placeholders: {self.template.placeholders}")
+            logger.debug("Template placeholders: %s", self.template.placeholders)
         
         # Set up output processor
         self.output_processor = OutputProcessor(
@@ -114,41 +119,68 @@ class InferenceEngine:
             include_input=self.config.include_input,
             include_prompt=self.config.include_prompt,
             checkpoint_every=self.config.checkpoint_every,
+            config_dict=self.config.to_dict(),
         )
     
+    @classmethod
+    def from_checkpoint(cls, checkpoint_path: str) -> "InferenceEngine":
+        """Create an engine that resumes from a checkpoint.
+
+        Args:
+            checkpoint_path: Path to the ``.checkpoint`` file.
+
+        Returns:
+            An :class:`InferenceEngine` (or :class:`BatchInferenceEngine`)
+            configured to continue where the previous run left off.
+        """
+        checkpoint = OutputWriter.load_checkpoint(checkpoint_path)
+        if "config" not in checkpoint:
+            raise ValueError(
+                "Checkpoint does not contain config data. "
+                "Cannot resume — please re-run with full arguments."
+            )
+        config = InferenceConfig(**checkpoint["config"])
+        engine = cls(config)
+        engine._resume_count = checkpoint.get("count", 0)
+        return engine
+
     def run(self):
         """Run the full inference pipeline."""
         self._start_time = time.time()
-        
+
         try:
             self.setup()
             self._run_inference()
         finally:
             self._cleanup()
-        
+
         elapsed = time.time() - self._start_time
-        self._print(f"\nCompleted {self._items_processed} items in {elapsed:.1f}s")
-        self._print(f"Output saved to: {self.config.output_file}")
-    
+        logger.info("Completed %d items in %.1fs", self._items_processed, elapsed)
+        logger.info("Output saved to: %s", self.config.output_file)
+
     def _run_inference(self):
         """Run inference on all data items."""
-        self.output_writer.open()
-        
-        # Progress bar
+        resuming = self._resume_count > 0
+        self.output_writer.open(append=resuming)
+
         items = list(self.data_loader)
+
+        if resuming:
+            logger.info("Resuming from item %d", self._resume_count)
+            items = items[self._resume_count:]
+
         pbar = tqdm(
             items,
             desc="Inferencing",
             disable=self.config.quiet,
             unit="item",
         )
-        
+
         for item in pbar:
             result = self._process_item(item)
             self.output_writer.write(result)
             self._items_processed += 1
-            
-            # Update progress bar
+
             if not self.config.quiet:
                 pbar.set_postfix({"output": result.output[:30] + "..."})
     
@@ -241,10 +273,6 @@ class InferenceEngine:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
     
-    def _print(self, message: str):
-        """Print message if not in quiet mode."""
-        if not self.config.quiet:
-            print(message)
 
 
 class BatchInferenceEngine(InferenceEngine):

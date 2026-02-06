@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-batch"
+version = "0.1.0"
+description = "A modular CLI for batch LLM inference with customizable templates"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Waad Ben Kheder"},
+]
+keywords = ["llm", "batch", "inference", "nlp", "transformers", "unsloth"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "datasets>=2.18.0",
+    "accelerate>=0.27.0",
+    "peft>=0.10.0",
+    "trl>=0.8.0",
+    "bitsandbytes>=0.43.0",
+    "tqdm>=4.65.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+unsloth = ["unsloth"]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+eval = [
+    "sacrebleu>=2.4.0",
+    "evaluate>=0.4.0",
+    "pandas>=2.0.0",
+]
+
+[project.scripts]
+llm-batch = "llm_batch.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/wa3dbk/llm-batch"
+Repository = "https://github.com/wa3dbk/llm-batch"
+
+[tool.setuptools.packages.find]
+include = ["llm_batch*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
