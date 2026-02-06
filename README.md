@@ -268,7 +268,7 @@ Then use it:
 | `--seed` | Random seed | 42 |
 | `--device` | Device (auto, cuda, cpu, cuda:0, ...) | auto |
 
-## Recommended Models
+## 🤖 Recommended Models
 
 ### Best for Arabic/Multilingual
 
@@ -294,7 +294,7 @@ Then use it:
 | `unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit` | ~10GB | Strong general |
 | `unsloth/Mistral-Nemo-Instruct-2407-bnb-4bit` | ~14GB | High quality |
 
-## Examples
+## 📘 Examples
 
 ### NMT Evaluation
 
@@ -348,7 +348,7 @@ llm-batch \
     --extract-pattern "Translation:\s*(.*)"
 ```
 
-## Python API
+## 🐍 Python API
 
 ```python
 from llm_batch import InferenceEngine, InferenceConfig
@@ -381,7 +381,7 @@ run_inference(
 )
 ```
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 llm_batch/
@@ -396,14 +396,14 @@ llm_batch/
 └── utils.py         # Shared utilities
 ```
 
-## Testing
+## ✅ Testing
 
 ```bash
 pip install -e ".[dev]"
 pytest
 ```
 
-## Troubleshooting
+## 🚑 Troubleshooting
 
 ### Out of Memory
 
@@ -431,6 +431,6 @@ pytest
 llm-batch --backend transformers ...
 ```
 
-## License
+## ⚖️  License
 
 MIT License
