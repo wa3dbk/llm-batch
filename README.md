@@ -31,6 +31,8 @@
 llm-batch --model unsloth/Qwen2.5-7B-Instruct-bnb-4bit \
   --input data.tsv --template "Translate to English: {source}" --output out.tsv --batch-size 8
 ```
+where `{source}` is the column name in data.tsv containing the text to translate.
+
 
 ## ✨ Features
 
