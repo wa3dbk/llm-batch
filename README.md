@@ -196,6 +196,35 @@ Then use it:
 --system-prompt "You are a professional translator."
 ```
 
+### Built-in NMT Templates
+
+Several built-in templates are available by name, based on prompts from [Jon et al. (AbjadNLP 2026)](https://aclanthology.org/2026.abjadnlp-1.41/) that are designed to produce clean translation output without extra verbosity:
+
+| Name | Direction | Placeholders |
+|------|-----------|--------------|
+| `nmt` | Dialect-specific | `{target_language}`, `{source}` |
+| `nmt_general` | English to Arabic | `{source}` |
+| `nmt_ar2en` | Arabic to English | `{source}` |
+
+```bash
+# Arabic to English using built-in template
+llm-batch -m Jais-2-70B-Chat \
+  --template nmt_ar2en -i test.tsv -o out.tsv \
+  --no-sample --num-beams 4 --max-length-ratio 5
+
+# Dialect-specific (test.tsv needs target_language and source columns)
+llm-batch -m Jais-2-70B-Chat \
+  --template nmt -i test.tsv -o out.tsv \
+  --no-sample --num-beams 4 --max-length-ratio 5
+```
+
+All NMT templates include a system prompt that instructs the model to output only the translation. You can also use the template files directly:
+
+```bash
+--template templates/nmt_ar2en.md \
+--system-prompt templates/system_nmt.txt
+```
+
 ## 🧰 Command-Line Options
 
 ### Model Options
@@ -254,6 +283,7 @@ Then use it:
 |--------|-------------|---------|
 | `--strip-output` | Strip whitespace from output | True |
 | `--extract-pattern` | Regex pattern to extract from output | None |
+| `--max-length-ratio` | Crop output exceeding this ratio vs source length (e.g. 5.0) | None |
 | `--stop-strings` | Comma-separated stop strings | None |
 | `--include-input` | Include input columns in output | False |
 | `--include-prompt` | Include full prompt in output | False |
@@ -271,6 +301,23 @@ Then use it:
 | `--device` | Device (auto, cuda, cpu, cuda:0, ...) | auto |
 
 ## 🤖 Recommended Models
+
+### NMT / Arabic Dialects
+
+Based on [Jon et al. (AbjadNLP 2026)](https://aclanthology.org/2026.abjadnlp-1.41/) evaluation of 16 LLMs on dialectal Arabic MT:
+
+| Model | Size | Notes |
+|-------|------|-------|
+| `Jais-2-70B-Chat` | 70B | Best open-source for dialectal Arabic MT |
+| `Jais-2-8B-Chat` | 8B | Good Arabic, lower VRAM |
+| `Nile-Chat-12B` | 12B | Egyptian dialect specialist |
+| `c4ai-command-r7b-arabic-02-2025` | 7B | Arabic-tuned Command-R |
+| `aya-expanse-32b` | 32B | Strong multilingual MT |
+| `aya-expanse-8b` | 8B | Lighter Aya variant |
+| `c4ai-command-r-08-2024` | 32B | Multilingual, good MT scores |
+| `command-a-translate-08-2025` | 111B | Highest quality if VRAM allows |
+| `gemma-3-27b-it` | 27B | Strong multilingual |
+| `Qwen3-4B-Instruct-2507` | 4B | Fast, decent quality |
 
 ### Best for Arabic/Multilingual
 
@@ -294,7 +341,9 @@ Then use it:
 | Model | VRAM | Notes |
 |-------|------|-------|
 | `unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit` | ~10GB | Strong general |
-| `unsloth/Mistral-Nemo-Instruct-2407-bnb-4bit` | ~14GB | High quality |
+| `Llama-3.3-70B-Instruct` | 70B | Strong general + Arabic |
+| `Mistral-Small-3.2-24B-Instruct-2506` | 24B | High quality |
+| `EuroLLM-9B-Instruct` | 9B | European + Arabic |
 
 ## 📘 Examples
 
@@ -303,14 +352,16 @@ Then use it:
 ```bash
 # Prepare test data (test.tsv with 'source' and 'reference' columns)
 
-# Run inference
+# Run inference using the built-in NMT template
 llm-batch \
     --model unsloth/Qwen2.5-7B-Instruct-bnb-4bit \
     --input test.tsv \
-    --template "Translate Arabic to English: {source}" \
+    --template nmt_ar2en \
     --output predictions.tsv \
+    --no-sample \
     --num-beams 4 \
-    --max-tokens 256
+    --max-tokens 256 \
+    --max-length-ratio 5
 
 # Evaluate with sacrebleu
 cut -f2 predictions.tsv | sacrebleu test.reference.txt
@@ -348,6 +399,21 @@ llm-batch \
     --template "Translate: {source}\nTranslation:" \
     --output results.tsv \
     --extract-pattern "Translation:\s*(.*)"
+```
+
+### Crop Degenerate Output
+
+Some LLMs produce repetitive or overly long output. Use `--max-length-ratio` to
+automatically crop output that exceeds a multiple of the source input length:
+
+```bash
+# Crop output longer than 5x the source text
+llm-batch \
+    --model unsloth/Qwen2.5-7B-Instruct-bnb-4bit \
+    --input data.tsv \
+    --template nmt_ar2en \
+    --output results.tsv \
+    --max-length-ratio 5
 ```
 
 ## 🐍 Python API
@@ -392,10 +458,19 @@ llm_batch/
 ├── config.py        # Configuration management
 ├── model_loader.py  # Model loading (Unsloth/HF)
 ├── data_loader.py   # Data loading (TSV/CSV/JSONL/TXT)
-├── template.py      # Prompt template handling
-├── output.py        # Output writing and processing
+├── template.py      # Prompt template handling + built-in NMT templates
+├── output.py        # Output writing, processing, and length-ratio guard
 ├── engine.py        # Main inference engine
 └── utils.py         # Shared utilities
+
+templates/
+├── system_nmt.txt          # NMT system prompt (Jon et al., 2026)
+├── nmt_dialect.md          # Dialect-specific translation template
+├── nmt_en2ar.md            # English to Arabic template
+├── nmt_ar2en.md            # Arabic to English template
+├── nmt_arabic_english.md   # Tunisian Arabic to English template
+├── system_translator.txt   # General translator system prompt
+└── summarization.md        # Summarization template
 ```
 
 ## ✅ Testing
