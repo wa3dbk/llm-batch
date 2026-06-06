@@ -59,6 +59,7 @@ class InferenceConfig:
     # Output processing
     strip_output: bool = True
     extract_pattern: Optional[str] = None
+    max_length_ratio: Optional[float] = None
     include_input: bool = False
     include_prompt: bool = False
     
@@ -127,6 +128,7 @@ class InferenceConfig:
             # Output
             strip_output=args.strip_output,
             extract_pattern=args.extract_pattern,
+            max_length_ratio=args.max_length_ratio,
             include_input=args.include_input,
             include_prompt=args.include_prompt,
             

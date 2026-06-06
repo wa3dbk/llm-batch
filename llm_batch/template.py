@@ -41,12 +41,17 @@ class PromptTemplate:
             system_prompt: Optional system prompt for chat models
             default_values: Default values for placeholders
         """
-        # Load from file if path exists
-        if Path(template).exists():
-            template = Path(template).read_text(encoding="utf-8")
-        
-        if system_prompt and Path(system_prompt).exists():
-            system_prompt = Path(system_prompt).read_text(encoding="utf-8")
+        # Load from file if path exists.
+        # Strings containing newlines or exceeding OS path limits are never paths.
+        if "\n" not in template and len(template) < 256:
+            p = Path(template)
+            if p.exists():
+                template = p.read_text(encoding="utf-8")
+
+        if system_prompt and "\n" not in system_prompt and len(system_prompt) < 256:
+            p = Path(system_prompt)
+            if p.exists():
+                system_prompt = p.read_text(encoding="utf-8")
         
         self.template = template.strip()
         self.system_prompt = system_prompt.strip() if system_prompt else None
@@ -245,31 +250,58 @@ class PromptBuilder:
         )
 
 
+# System prompt from Jon et al. (2026) — designed to suppress verbose LLM output
+_NMT_SYSTEM_PROMPT = (
+    "You are a professional, very precise translator and a native speaker. "
+    "Translate inputs based on the instructions and always print out only "
+    "the text of the best possible translation, with no explanations.\n"
+    "Keep the same formatting (e.g. markup, lines, spacing) as the original. "
+    "Do not translate untranslatable parts of the input (URLs, code, and similar)."
+)
+
 # Pre-built templates for common tasks
 TEMPLATES = {
     "translation": PromptTemplate(
         template="Translate the following text to {target_language}:\n\n{source}\n\nTranslation:",
         system_prompt="You are a professional translator. Translate accurately and naturally.",
     ),
-    
+
     "translation_simple": PromptTemplate(
         template="Translate to English: {source}",
     ),
-    
+
+    # From Jon, Bondok & Bojar (AbjadNLP 2026) — dialect-specific variant
+    "nmt": PromptTemplate(
+        template="Translate the following text into {target_language}, only print out the translation, not add any explanations: {source}",
+        system_prompt=_NMT_SYSTEM_PROMPT,
+    ),
+
+    # General Arabic prompt from the same paper (no dialect specified)
+    "nmt_general": PromptTemplate(
+        template="Translate the following text into Arabic, only print out the translation, not add any explanations: {source}",
+        system_prompt=_NMT_SYSTEM_PROMPT,
+    ),
+
+    # Reverse direction: Arabic to English
+    "nmt_ar2en": PromptTemplate(
+        template="Translate the following text into English, only print out the translation, not add any explanations: {source}",
+        system_prompt=_NMT_SYSTEM_PROMPT,
+    ),
+
     "summarization": PromptTemplate(
         template="Summarize the following text:\n\n{text}\n\nSummary:",
         system_prompt="You are a helpful assistant that provides concise summaries.",
     ),
-    
+
     "qa": PromptTemplate(
         template="Context: {context}\n\nQuestion: {question}\n\nAnswer:",
         system_prompt="Answer questions based on the provided context.",
     ),
-    
+
     "classification": PromptTemplate(
         template="Classify the following text into one of these categories: {categories}\n\nText: {text}\n\nCategory:",
     ),
-    
+
     "completion": PromptTemplate(
         template="{text}",
     ),

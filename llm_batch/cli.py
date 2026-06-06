@@ -250,6 +250,12 @@ Examples:
         help="Regex pattern to extract from output"
     )
     output_group.add_argument(
+        "--max-length-ratio",
+        type=float,
+        default=None,
+        help="Crop output exceeding this ratio vs source length (e.g. 5.0)"
+    )
+    output_group.add_argument(
         "--stop-strings",
         help="Comma-separated stop strings"
     )
@@ -314,38 +320,56 @@ Examples:
 def list_models():
     """Print list of recommended models."""
     print("""
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                         RECOMMENDED MODELS                                    ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║                                                                              ║
-║  🏆 BEST FOR ARABIC/MULTILINGUAL:                                            ║
-║  ─────────────────────────────────                                           ║
-║  • unsloth/Qwen2.5-7B-Instruct-bnb-4bit     (★★★★★ multilingual)            ║
-║  • unsloth/Qwen2.5-3B-Instruct-bnb-4bit     (★★★★★ efficient)               ║
-║  • unsloth/Qwen3-8B                          (★★★★★ latest)                  ║
-║  • CohereForAI/aya-23-8B                     (★★★★★ translation)            ║
-║  • inceptionai/jais-family-6p7b-chat         (★★★★★ Arabic-native)          ║
-║                                                                              ║
-║  ⚡ FAST & EFFICIENT:                                                         ║
-║  ────────────────────                                                        ║
-║  • unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit   (~3GB VRAM)                      ║
-║  • unsloth/Llama-3.2-1B-Instruct-bnb-4bit   (~3GB VRAM)                      ║
-║  • unsloth/gemma-3-4b-it-unsloth-bnb-4bit   (~4GB VRAM)                      ║
-║                                                                              ║
-║  🎯 GENERAL PURPOSE:                                                          ║
-║  ───────────────────                                                         ║
-║  • unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit                               ║
-║  • unsloth/Mistral-Nemo-Instruct-2407-bnb-4bit                               ║
-║  • unsloth/phi-4-unsloth-bnb-4bit                                            ║
-║                                                                              ║
-║  📝 FOR SUMMARIZATION:                                                        ║
-║  ─────────────────────                                                       ║
-║  • unsloth/Qwen2.5-7B-Instruct-bnb-4bit                                      ║
-║  • unsloth/Llama-3.3-70B-Instruct-bnb-4bit  (if you have VRAM)              ║
-║                                                                              ║
-║  Usage: llm-batch -m unsloth/Qwen2.5-7B-Instruct-bnb-4bit ...               ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+==========================================================================
+                         RECOMMENDED MODELS
+==========================================================================
+
+  NMT / ARABIC DIALECTS (from Jon et al., AbjadNLP 2026):
+  --------------------------------------------------------
+  * Jais-2-70B-Chat                            70B  best open-source for dialectal Arabic MT
+  * Jais-2-8B-Chat                              8B  good Arabic, lower VRAM
+  * Nile-Chat-12B                              12B  Egyptian dialect specialist
+  * c4ai-command-r7b-arabic-02-2025             7B  Arabic-tuned Command-R
+  * aya-expanse-32b                            32B  strong multilingual MT
+  * aya-expanse-8b                              8B  lighter Aya variant
+  * c4ai-command-r-08-2024                     32B  multilingual, good MT scores
+  * command-a-translate-08-2025               111B  highest quality if VRAM allows
+  * gemma-3-27b-it                             27B  strong multilingual
+  * Qwen3-4B-Instruct-2507                      4B  fast, decent quality
+
+  BEST FOR ARABIC/MULTILINGUAL:
+  -----------------------------
+  * unsloth/Qwen2.5-7B-Instruct-bnb-4bit      ~8GB  excellent multilingual
+  * unsloth/Qwen2.5-3B-Instruct-bnb-4bit      ~5GB  efficient
+  * CohereForAI/aya-23-8B                     ~10GB  great for translation
+  * inceptionai/jais-family-6p7b-chat          ~8GB  best Arabic tokenizer
+
+  FAST & EFFICIENT:
+  -----------------
+  * unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit    ~3GB
+  * unsloth/Llama-3.2-1B-Instruct-bnb-4bit    ~3GB
+  * unsloth/gemma-3-4b-it-unsloth-bnb-4bit    ~4GB
+
+  GENERAL PURPOSE:
+  ----------------
+  * unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit
+  * Llama-3.3-70B-Instruct                     70B  strong general + Arabic
+  * Mistral-Small-3.2-24B-Instruct-2506        24B
+  * EuroLLM-9B-Instruct                         9B
+
+  Usage: llm-batch -m unsloth/Qwen2.5-7B-Instruct-bnb-4bit ...
+
+  Built-in NMT templates (use with --template):
+    nmt           dialect-specific: requires {target_language} and {source}
+    nmt_general   English->Arabic (no dialect specified)
+    nmt_ar2en     Arabic->English
+
+  Example:
+    llm-batch -m Jais-2-70B-Chat -i test.tsv \\
+      --template nmt --system-prompt templates/system_nmt.txt \\
+      --max-length-ratio 5 --no-sample --num-beams 4 -o out.tsv
+
+==========================================================================
     """)
 
 

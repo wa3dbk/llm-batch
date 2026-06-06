@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from .config import InferenceConfig
 from .model_loader import ModelLoader
 from .data_loader import DataLoader, DataItem
-from .template import PromptTemplate
+from .template import PromptTemplate, TEMPLATES
 from .output import OutputWriter, OutputProcessor, InferenceResult
 
 
@@ -94,11 +94,20 @@ class InferenceEngine:
         if self.config.verbose >= 2:
             logger.debug(self.data_loader.preview())
         
-        # Set up template
-        self.template = PromptTemplate(
-            template=self.config.template,
-            system_prompt=self.config.system_prompt,
-        )
+        # Set up template — support built-in template names (e.g. "nmt", "nmt_ar2en")
+        if self.config.template in TEMPLATES:
+            self.template = TEMPLATES[self.config.template]
+            # Override system prompt if explicitly provided via CLI
+            if self.config.system_prompt:
+                self.template = PromptTemplate(
+                    template=self.template.template,
+                    system_prompt=self.config.system_prompt,
+                )
+        else:
+            self.template = PromptTemplate(
+                template=self.config.template,
+                system_prompt=self.config.system_prompt,
+            )
         
         if self.config.verbose:
             logger.debug("Template placeholders: %s", self.template.placeholders)
@@ -108,6 +117,7 @@ class InferenceEngine:
             strip=self.config.strip_output,
             extract_pattern=self.config.extract_pattern,
             stop_strings=self.config.stop_strings,
+            max_length_ratio=self.config.max_length_ratio,
         )
         
         # Set up output writer
@@ -194,13 +204,16 @@ class InferenceEngine:
             )
         else:
             prompt = self.template.render(item.data)
-        
+
         # Generate
         raw_output = self._generate(prompt)
-        
+
+        # Compute source length for length-ratio guard
+        source_len = sum(len(str(v)) for v in item.data.values())
+
         # Post-process
-        output = self.output_processor.process(raw_output)
-        
+        output = self.output_processor.process(raw_output, source_len=source_len)
+
         return InferenceResult(
             index=item.index,
             input_data=item.data,
@@ -367,8 +380,9 @@ class BatchInferenceEngine(InferenceEngine):
             # For right-padded inputs (default), generated tokens start at padded_length
             generated_tokens = output_ids[padded_length:]
             raw_output = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
-            output = self.output_processor.process(raw_output)
-            
+            source_len = sum(len(str(v)) for v in item.data.values())
+            output = self.output_processor.process(raw_output, source_len=source_len)
+
             results.append(InferenceResult(
                 index=item.index,
                 input_data=item.data,

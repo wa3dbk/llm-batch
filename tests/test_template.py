@@ -92,7 +92,7 @@ class TestPromptBuilder:
 
 class TestBuiltinTemplates:
     def test_all_templates_exist(self):
-        for name in ["translation", "translation_simple", "summarization", "qa", "classification", "completion"]:
+        for name in ["translation", "translation_simple", "summarization", "qa", "classification", "completion", "nmt", "nmt_general", "nmt_ar2en"]:
             tpl = get_template(name)
             assert isinstance(tpl, PromptTemplate)
 

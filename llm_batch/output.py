@@ -43,49 +43,67 @@ class InferenceResult:
 
 class OutputProcessor:
     """Post-processes model outputs."""
-    
+
     def __init__(
         self,
         strip: bool = True,
         extract_pattern: Optional[str] = None,
         stop_strings: Optional[List[str]] = None,
+        max_length_ratio: Optional[float] = None,
     ):
         """
         Initialize output processor.
-        
+
         Args:
             strip: Strip whitespace from output
             extract_pattern: Regex pattern to extract from output
             stop_strings: Strings to stop generation at
+            max_length_ratio: If set, crop output when it exceeds this ratio
+                relative to the source input length (in characters). For
+                example, 5.0 means the output is cropped to 5x the source
+                length. Useful for catching degenerate/repetitive output.
         """
         self.strip = strip
         self.extract_pattern = re.compile(extract_pattern) if extract_pattern else None
         self.stop_strings = stop_strings or []
-    
-    def process(self, output: str) -> str:
-        """Process model output."""
+        self.max_length_ratio = max_length_ratio
+
+    def process(self, output: str, source_len: Optional[int] = None) -> str:
+        """Process model output.
+
+        Args:
+            output: Raw model output string.
+            source_len: Length of the source input in characters. Used
+                together with ``max_length_ratio`` to crop overly long output.
+        """
         processed = output
-        
+
         # Strip whitespace
         if self.strip:
             processed = processed.strip()
-        
+
         # Stop at stop strings
         for stop in self.stop_strings:
             if stop in processed:
                 processed = processed.split(stop)[0]
-        
+
+        # Crop output that exceeds the length ratio
+        if self.max_length_ratio and source_len and source_len > 0:
+            max_chars = int(source_len * self.max_length_ratio)
+            if len(processed) > max_chars:
+                processed = processed[:max_chars]
+
         # Extract pattern
         if self.extract_pattern:
             match = self.extract_pattern.search(processed)
             if match:
                 # Return first group if available, else full match
                 processed = match.group(1) if match.groups() else match.group(0)
-        
+
         # Final strip
         if self.strip:
             processed = processed.strip()
-        
+
         return processed
 
 
