@@ -50,6 +50,7 @@ class OutputProcessor:
         extract_pattern: Optional[str] = None,
         stop_strings: Optional[List[str]] = None,
         max_length_ratio: Optional[float] = None,
+        first_line_only: bool = False,
     ):
         """
         Initialize output processor.
@@ -62,11 +63,15 @@ class OutputProcessor:
                 relative to the source input length (in characters). For
                 example, 5.0 means the output is cropped to 5x the source
                 length. Useful for catching degenerate/repetitive output.
+            first_line_only: If True, keep only the first non-empty line of
+                output. Useful for NMT where the translation is always a
+                single line and extra lines are model commentary.
         """
         self.strip = strip
         self.extract_pattern = re.compile(extract_pattern) if extract_pattern else None
         self.stop_strings = stop_strings or []
         self.max_length_ratio = max_length_ratio
+        self.first_line_only = first_line_only
 
     def process(self, output: str, source_len: Optional[int] = None) -> str:
         """Process model output.
@@ -81,6 +86,14 @@ class OutputProcessor:
         # Strip whitespace
         if self.strip:
             processed = processed.strip()
+
+        # Keep only first non-empty line
+        if self.first_line_only:
+            for line in processed.splitlines():
+                line = line.strip()
+                if line:
+                    processed = line
+                    break
 
         # Stop at stop strings
         for stop in self.stop_strings:

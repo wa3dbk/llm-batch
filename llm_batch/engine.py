@@ -132,6 +132,7 @@ class InferenceEngine:
             extract_pattern=self.config.extract_pattern,
             stop_strings=self.config.stop_strings,
             max_length_ratio=self.config.max_length_ratio,
+            first_line_only=self.config.first_line_only,
         )
         
         # Set up output writer

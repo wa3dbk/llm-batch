@@ -256,6 +256,12 @@ Examples:
         help="Crop output exceeding this ratio vs source length (e.g. 5.0)"
     )
     output_group.add_argument(
+        "--first-line-only",
+        action="store_true",
+        default=False,
+        help="Keep only the first non-empty line of output (strips model commentary)"
+    )
+    output_group.add_argument(
         "--stop-strings",
         help="Comma-separated stop strings"
     )
