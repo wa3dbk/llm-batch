@@ -55,6 +55,7 @@ class InferenceEngine:
         self._start_time = None
         self._items_processed = 0
         self._resume_count = 0
+        self._is_unsloth = False
     
     def setup(self):
         """Set up all components."""
@@ -72,7 +73,20 @@ class InferenceEngine:
             verbose=self.config.verbose,
         )
         self.model, self.tokenizer = self._model_loader.load()
-        
+        self._is_unsloth = self._model_loader.backend_used == "unsloth"
+
+        # Unsloth patches the KV cache in a way that is incompatible with
+        # beam search (no reorder_cache method).  Fall back to greedy.
+        if self._is_unsloth and self.config.num_beams > 1:
+            logger.warning(
+                "Beam search (num_beams=%d) is not supported with the Unsloth "
+                "backend. Falling back to greedy decoding. Use "
+                "--backend transformers if you need beam search.",
+                self.config.num_beams,
+            )
+            self.config.num_beams = 1
+            self.config.do_sample = False
+
         if self.config.verbose:
             info = self._model_loader.get_model_info()
             logger.debug("Model loaded: %s parameters", info.get('total_params_human', 'N/A'))

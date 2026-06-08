@@ -501,6 +501,17 @@ pytest
 - Add `--no-repeat-ngram 3`
 - Lower `--temperature`
 
+### Beam Search with Unsloth
+
+Unsloth's patched KV cache does not support beam search (`'tuple' object has no
+attribute 'reorder_cache'`). The tool automatically falls back to greedy
+decoding and logs a warning. If you need beam search, force the transformers
+backend:
+
+```bash
+llm-batch --backend transformers --num-beams 4 ...
+```
+
 ### Import Errors
 
 ```bash
