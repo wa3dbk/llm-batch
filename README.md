@@ -284,6 +284,7 @@ All NMT templates include a system prompt that instructs the model to output onl
 | `--strip-output` | Strip whitespace from output | True |
 | `--extract-pattern` | Regex pattern to extract from output | None |
 | `--max-length-ratio` | Crop output exceeding this ratio vs source length (e.g. 5.0) | None |
+| `--first-line-only` | Keep only the first non-empty line (strips model commentary) | False |
 | `--stop-strings` | Comma-separated stop strings | None |
 | `--include-input` | Include input columns in output | False |
 | `--include-prompt` | Include full prompt in output | False |

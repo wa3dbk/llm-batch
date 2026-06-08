@@ -75,6 +75,57 @@ class TestMaxLengthRatio:
 
 
 # ---------------------------------------------------------------------------
+# OutputProcessor: first_line_only
+# ---------------------------------------------------------------------------
+
+class TestFirstLineOnly:
+    def test_keeps_single_line(self):
+        proc = OutputProcessor(first_line_only=True)
+        assert proc.process("This is the translation.") == "This is the translation."
+
+    def test_strips_commentary(self):
+        proc = OutputProcessor(first_line_only=True)
+        output = 'This is the first sentence.\n"It seems like you meant something else.\n\nIf you could provide more context..."'
+        assert proc.process(output) == "This is the first sentence."
+
+    def test_skips_leading_blank_lines(self):
+        proc = OutputProcessor(first_line_only=True)
+        output = "\n\n  \nActual translation here\nExtra stuff"
+        assert proc.process(output) == "Actual translation here"
+
+    def test_disabled_by_default(self):
+        proc = OutputProcessor()
+        output = "line1\nline2"
+        assert proc.process(output) == "line1\nline2"
+
+    def test_combined_with_stop_strings(self):
+        proc = OutputProcessor(first_line_only=True, stop_strings=["<END>"])
+        output = "Translation here<END>garbage\nmore garbage"
+        assert proc.process(output) == "Translation here"
+
+    def test_combined_with_length_ratio(self):
+        proc = OutputProcessor(first_line_only=True, max_length_ratio=5.0)
+        output = "x" * 100 + "\ncommentary"
+        result = proc.process(output, source_len=10)
+        assert len(result) == 50
+
+    def test_real_world_verbose_qwen(self):
+        """Reproduce the actual Qwen verbose output seen in translations.tsv."""
+        proc = OutputProcessor(first_line_only=True)
+        output = (
+            '"It seems like you might have made a small typo or mix-up in your '
+            'request. If you meant "ترجم هذه باللغة" it translates to '
+            '"Translate this into the language" in English.\n\n'
+            "If you could provide more context or clarify what exactly you "
+            'want translated, I\'d be happy to help!"'
+        )
+        result = proc.process(output)
+        # Should keep only the first line, even if it's noisy
+        assert "\n" not in result
+        assert "If you could provide" not in result
+
+
+# ---------------------------------------------------------------------------
 # NMT Templates
 # ---------------------------------------------------------------------------
 
