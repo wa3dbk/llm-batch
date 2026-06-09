@@ -164,12 +164,33 @@ class PromptTemplate:
         
         # Apply chat template if tokenizer provided
         if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
-            return tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-        
+            try:
+                result = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                if result is not None:
+                    return result
+            except (Exception,):
+                pass
+
+            # Fallback: some models (e.g. Gemma 3) don't support the
+            # "system" role.  Merge system content into the user message.
+            if system:
+                merged_content = system + "\n\n" + user_content
+                fallback = [{"role": "user", "content": merged_content}]
+                try:
+                    result = tokenizer.apply_chat_template(
+                        fallback,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+                    if result is not None:
+                        return result
+                except (Exception,):
+                    pass
+
         return messages
     
     def __str__(self) -> str:
